@@ -6,6 +6,8 @@ on:
 
 permissions:
   issues: write
+  pull-requests: write
+  contents: read
 
 jobs:
   assign:
@@ -15,21 +17,28 @@ jobs:
     steps:
       - name: Handle /assign command
         uses: actions/github-script@v7
+
         with:
           script: |
             const comment = context.payload.comment.body.trim().toLowerCase();
             const sender = context.payload.comment.user.login;
             const issue = context.payload.issue;
 
-            // Ignore bots
-            if (sender === 'github-actions[bot]') return;
+            // Ignore bots and maintainer
+            if (
+              sender === 'github-actions[bot]' ||
+              sender === 'imDarshanGK'
+            ) {
+              return;
+            }
 
             // Only run for /assign
             if (comment !== '/assign') return;
 
-            // Check if issue already assigned
+            // Current assignees
             const assignees = issue.assignees || [];
 
+            // Check if assigned to someone else
             const assignedToOthers = assignees.some(
               a => a.login !== sender
             );
@@ -70,16 +79,17 @@ Please choose another available issue 🚀`
             }
 
             // Check if user already has another assigned issue
-            const { data: openIssues } = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              assignee: sender
-            });
+            const { data: openIssues } =
+              await github.rest.issues.listForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                assignee: sender
+              });
 
-            // Ignore current issue and pull requests
+            // Ignore PRs and current issue
             const otherAssignedIssues = openIssues.filter(
-              i => i.number !== issue.number && !i.pull_request
+              i => !i.pull_request && i.number !== issue.number
             );
 
             if (otherAssignedIssues.length > 0) {
@@ -93,7 +103,7 @@ Please choose another available issue 🚀`
                 issue_number: issue.number,
                 body: `Hi @${sender} 👋
 
-You already have assigned open issue(s): ${issueList}
+You already have assigned issue(s): ${issueList}
 
 Please complete your current assigned issue before requesting a new one.
 
