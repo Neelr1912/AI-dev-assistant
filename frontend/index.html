@@ -1809,7 +1809,32 @@ details.issue-card[open] {
       background: var(--bg3);
       border-color: var(--border2);
     }
-
+    
+/* Delete button */
+    .delete-btn {
+      border: none;
+      outline: none;
+      box-shadow: none;
+      background: transparent;
+      color: var(--text-3);
+      cursor: pointer;
+      padding: 4px;
+      margin-left: 8px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition);
+    }
+    .delete-btn:focus,
+    .delete-btn:focus-visible {
+      outline: none;
+      box-shadow: none;
+    }
+    .delete-btn:hover { color: #ef4444; background: rgba(239, 68, 68, 0.12);
+    }
+    .delete-btn svg { width: 16px; height: 16px;
+    }
     .history-thumb {
       font-family: var(--font-mono);
       font-size: 0.72rem;
@@ -2114,12 +2139,12 @@ details.issue-card[open] {
   .nav-links .nav-link span{display:none}
   .hero{padding:50px 0 40px}
   .hero-sub{font-size:0.98rem}
-  .features-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;max-width:400px;margin-inline:auto;padding:16px 0 40px}
-  .feat-pill{gap:7px;padding:6px 8px;min-width:0}
-  .feat-pill-icon{width:28px;height:28px;flex-shrink:0}
+  .features-row{display:flex;flex-direction:column;gap:8px;max-width:340px;margin-inline:auto;padding:16px 0 40px}
+  .feat-pill{gap:10px;padding:10px 14px;min-width:0}
+  .feat-pill-icon{width:32px;height:32px;flex-shrink:0}
   .feat-pill-info{min-width:0;overflow-wrap:break-word}
-  .feat-pill-info .feat-pill-title{font-size:0.76rem;line-height:1.25}
-  .feat-pill-info p{font-size:0.68rem;line-height:1.25}
+  .feat-pill-info .feat-pill-title{font-size:0.82rem;line-height:1.25}
+  .feat-pill-info p{font-size:0.74rem;line-height:1.25}
   .workspace{gap:14px}
   #workspace > .panel{grid-column:1 !important;min-width:0}
   .panel-header{padding:12px 14px}
@@ -2427,6 +2452,7 @@ details.issue-card[open] {
 
 </style>
 <link rel="icon" href="data:,">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
   <div class="bg-orb bg-orb-1"></div>
@@ -2658,6 +2684,8 @@ details.issue-card[open] {
         <div id="resultActions" class="result-actions" style="display:none">
           <button class="icon-btn" id="favBtn" title="Save to favorites">★</button>
           <button class="icon-btn" id="downloadBtn" title="Download results">⬇</button>
+          <button class="icon-btn" id="export-pdf-btn" title="Export as PDF">📄</button>
+          <button class="icon-btn" id="export-md-btn" title="Export as Markdown">📝</button>
         </div>
 
       </div>
@@ -3419,6 +3447,7 @@ details.issue-card[open] {
           return { response, baseUsed: normalizedBase, fallbackUsed: false };
         } catch (err) {
           const fallbackBase = getApiFallbackBase(normalizedBase);
+
           if (!fallbackBase) throw err;
           const response = await fetch(`${fallbackBase}${path}`, options);
           return { response, baseUsed: fallbackBase, fallbackUsed: true };
@@ -3813,7 +3842,6 @@ details.issue-card[open] {
               const err = await res.json().catch(() => ({}));
               throw new Error(err.detail || `HTTP ${res.status}`);
             }
-
             const data = await res.json();
             currentResult = data;
             renderZipResults(data);
@@ -3868,6 +3896,7 @@ details.issue-card[open] {
 
         } catch (err) {
           toast(getTranslation('toast_analysis_failed').replace('{message}', err.message), 'error');
+         
           resetResults();
         } finally {
           analyzeBtn.classList.remove('loading');
@@ -4424,7 +4453,7 @@ details.issue-card[open] {
          HISTORY (Paginated & Sorted)
       ═══════════════════════════════════════════════════════════════ */
       let historyOffset = 0;
-      const historyLimit = 10;
+      const historyLimit = 5;
       let historyTotal = 0;
       let historySortBy = 'timestamp';
       let historyOrder = 'desc';
@@ -4493,6 +4522,22 @@ details.issue-card[open] {
           // Fallback to local storage on fetch error
         }
         loadLocalHistory();
+      }
+
+      async function confirmDeleteHistory(id) {
+
+        if(!confirm("Delete this history entry?")) return;
+        const apiBase = getApiBase();
+
+        const res = await fetch(`${apiBase}/history/${id}`,{
+          method: "DELETE"
+        });
+
+        if(res.ok) {
+          fetchHistory();
+        } else {
+          toast("Failed to delete entry","error");
+        }
       }
 
       function loadLocalHistory() {
@@ -4602,6 +4647,28 @@ details.issue-card[open] {
                 ${issuesHtml}
               </div>
               <span class="history-meta">${displayTime}</span>
+              <button
+              class="delete-btn"
+              onclick="event.stopPropagation(); confirmDeleteHistory('${h.id}')"
+              title="Delete entry"
+              aria-label="Delete entry">
+              <svg 
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox=" 0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2" 
+              stroke-linecap="round" 
+              stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+              <path d="M10 11v6"></path>
+              <path d="M14 11v6"></path>
+              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+              </svg>
+              </button>
             </div>`;
         }).join('');
       }
@@ -4837,8 +4904,40 @@ details.issue-card[open] {
                 ${issuesHtml}
               </div>
               <span class="history-meta" style="opacity:0.5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span>
+              <button class="delete-btn" onclick="event.stopPropagation(); confirmDeleteFavorite('${f.id}')"
+              title="Delete favorite" aria-label="Delete favorite">
+              <svg 
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox=" 0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2" 
+              stroke-linecap="round" 
+              stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+              <path d="M10 11v6"></path>
+              <path d="M14 11v6"></path>
+              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+              </svg>
+              </button>
             </div>`;
         }).join('');
+      }
+
+      async function confirmDeleteFavorite(id) {
+        if(!confirm("Delete this favorite?")) return;
+
+        const normalizedId = Number(id);
+
+        favorites = favorites.filter(f => f.id !== normalizedId);
+        localStorage.setItem("qyx_favorites",
+        JSON.stringify(favorites));
+
+        renderFavorites();
+
       }
 
 document.getElementById('clearFavsBtn').addEventListener('click', () => {
@@ -4870,6 +4969,83 @@ document.getElementById('clearFavsBtn').addEventListener('click', () => {
         a.click();
         URL.revokeObjectURL(a.href);
         toast(getTranslation('toast_report_downloaded'), 'success');
+      });
+
+      // 1. Export as Markdown
+      document.getElementById('export-md-btn').addEventListener('click', () => {
+        if (!currentResult) return alert("No report generated yet!");
+        
+        try {
+            const codeContent = typeof editor !== 'undefined' ? editor.value : '';
+            const rawText = buildReport(currentResult, codeContent);
+            const mdText = "```text\n" + rawText + "\n```";
+            
+            const blob = new Blob([mdText], { type: 'text/markdown' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `qyverixai-report-${Date.now()}.md`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+            
+            if (typeof toast === 'function') toast('Downloaded as Markdown', 'success');
+        } catch (error) {
+            console.error("Markdown Error: ", error);
+            alert("Oops! Something went wrong generating the Markdown.");
+        }
+      });
+
+      // 2. Export as PDF
+      document.getElementById('export-pdf-btn').addEventListener('click', () => {
+        if (!currentResult) return alert("No report generated yet!");
+        
+        try {
+            const codeContent = typeof editor !== 'undefined' ? editor.value : '';
+            const rawText = buildReport(currentResult, codeContent);
+            
+            const lines = rawText.split('\n');
+            const linesPerPage = 45; 
+            
+            // Build a container in memory
+            const container = document.createElement('div');
+            container.style.width = '700px';
+            container.style.backgroundColor = '#ffffff';
+
+            for (let i = 0; i < lines.length; i += linesPerPage) {
+                const chunkText = lines.slice(i, i + linesPerPage).join('\n');
+                
+                const pageDiv = document.createElement('div');
+                pageDiv.style.fontFamily = 'monospace';
+                pageDiv.style.fontSize = '12px';
+                pageDiv.style.lineHeight = '1.5';
+                pageDiv.style.color = '#000000';
+                pageDiv.style.whiteSpace = 'pre-wrap';
+                pageDiv.innerText = chunkText === '' ? ' ' : chunkText;
+                
+                container.appendChild(pageDiv);
+                
+                if (i + linesPerPage < lines.length) {
+                    const pageBreak = document.createElement('div');
+                    pageBreak.className = 'html2pdf__page-break';
+                    container.appendChild(pageBreak);
+                }
+            }
+
+            const options = {
+              margin:       10,
+              filename:     `qyverixai-report-${Date.now()}.pdf`,
+              image:        { type: 'jpeg', quality: 0.98 },
+              html2canvas:  { scale: 2, scrollY: 0 }, 
+              jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(options).from(container).save().then(() => {
+              if (typeof toast === 'function') toast('Downloaded as PDF', 'success');
+            });
+            
+        } catch (error) {
+            console.error("PDF Error: ", error);
+            alert("Oops! Something went wrong generating the PDF.");
+        }
       });
 
       function buildReport(r, code) {
